@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rechner für Studien-Teilnahme</title>
+    <style>
+        /* Styling ist identisch zum vorherigen Code */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 550px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="date"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #results {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #eaf6ff;
+            border: 1px solid #bce8f1;
+            border-radius: 8px;
+            display: none;
+        }
+        #results h2 {
+            margin-top: 0;
+            color: #31708f;
+            text-align: center;
+        }
+        #results p {
+            font-size: 1.1em;
+            margin: 14px 0;
+            line-height: 1.6;
+        }
+        .error-message {
+            color: #c0392b;
+            font-weight: bold;
+            text-align: center;
+        }
+        .important-note {
+            margin-top: 20px;
+            font-style: italic;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        .result-item {
+            font-weight: bold;
+            color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Rechner für Datenerhebungs-Zeitraum</h1>
+
+        <form id="cycle-form">
+            <div class="form-group">
+                <label for="current-date">Heutiges Datum (für die Berechnung):</label>
+                <input type="date" id="current-date" required>
+            </div>
+
+            <hr style="border: 1px solid #eee; margin: 25px 0;">
+
+            <div class="form-group">
+                <label for="last-period">An welchem Datum hat Ihre letzte Periode eingesetzt?</label>
+                <input type="date" id="last-period" required>
+            </div>
+
+            <div class="form-group">
+                <label for="second-last-period">An welchem Datum hat Ihre vorletzte Periode eingesetzt?</label>
+                <input type="date" id="second-last-period" required>
+            </div>
+
+            <div class="form-group">
+                <label for="third-last-period">Falls möglich: An welchem Datum hat Ihre vor-vorletzte Periode eingesetzt?</label>
+                <input type="date" id="third-last-period">
+            </div>
+            
+            <div class="form-group">
+                <label for="bleeding-days">Ihre übliche Dauer der Blutung (in Tagen):</label>
+                <input type="number" id="bleeding-days" placeholder="z.B. 5" required>
+            </div>
+
+            <button type="button" onclick="calculateWindow()">Zeitfenster berechnen</button>
+        </form>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function parseDateAsLocal(dateString) {
+            if (!dateString) return null;
+            const parts = dateString.split('-');
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
+        function calculateWindow() {
+            const bleedingDays = parseInt(document.getElementById('bleeding-days').value);
+            const resultsDiv = document.getElementById('results');
+            const today = parseDateAsLocal(document.getElementById('current-date').value);
+            const lastPeriodDate = parseDateAsLocal(document.getElementById('last-period').value);
+            const secondLastPeriodDate = parseDateAsLocal(document.getElementById('second-last-period').value);
+            const thirdLastPeriodDate = parseDateAsLocal(document.getElementById('third-last-period').value);
+            
+            if (!today || !lastPeriodDate || !secondLastPeriodDate || !bleedingDays) {
+                resultsDiv.innerHTML = `<p class="error-message">Bitte füllen Sie alle erforderlichen Felder aus.</p>`;
+                resultsDiv.style.display = 'block';
+                return;
+            }
+
+            if (secondLastPeriodDate >= lastPeriodDate || (thirdLastPeriodDate && thirdLastPeriodDate >= secondLastPeriodDate)) {
+                 resultsDiv.innerHTML = `<p class="error-message">Die Daten der Perioden müssen in der korrekten chronologischen Reihenfolge sein.</p>`;
+                resultsDiv.style.display = 'block';
+                return;
+            }
+
+            const oneDay = 1000 * 60 * 60 * 24;
+            let avgCycleLength;
+            const cycleLength1 = Math.round((lastPeriodDate.getTime() - secondLastPeriodDate.getTime()) / oneDay);
+            if (thirdLastPeriodDate) {
+                const cycleLength2 = Math.round((secondLastPeriodDate.getTime() - thirdLastPeriodDate.getTime()) / oneDay);
+                avgCycleLength = Math.round((cycleLength1 + cycleLength2) / 2);
+            } else {
+                avgCycleLength = cycleLength1;
+            }
+            
+            if (avgCycleLength <= 0) {
+                 resultsDiv.innerHTML = `<p class="error-message">Die berechnete Zykluslänge ist ungültig. Bitte überprüfen Sie die Perioden-Daten.</p>`;
+                 resultsDiv.style.display = 'block';
+                 return;
+            }
+
+            let calculationStartDate = new Date(lastPeriodDate);
+            while (addDays(calculationStartDate, avgCycleLength) < today) {
+                calculationStartDate = addDays(calculationStartDate, avgCycleLength);
+            }
+
+            const allPossibleWindows = [];
+            for (let i = 0; i < 3; i++) {
+                const nextPeriodDate = addDays(calculationStartDate, avgCycleLength);
+                const ovulationDate = addDays(nextPeriodDate, -14);
+
+                allPossibleWindows.push({
+                    name: "Zeitraum vor dem Eisprung (Follikelphase)",
+                    start: addDays(calculationStartDate, bleedingDays),
+                    end: addDays(ovulationDate, -2)
+                });
+                allPossibleWindows.push({
+                    name: "Zeitraum nach dem Eisprung (Lutealphase)",
+                    start: addDays(ovulationDate, 2),
+                    end: addDays(nextPeriodDate, -2)
+                });
+                
+                calculationStartDate = nextPeriodDate;
+            }
+
+            // --- NEUE LOGIK ZUM FILTERN UND AUFBEREITEN ---
+            const upcomingWindows = allPossibleWindows
+                .map(win => {
+                    // Berechne den letztmöglichen Starttag für jedes Fenster
+                    const latestStart = addDays(win.end, -4);
+                    return { ...win, latestStart };
+                })
+                .filter(win => 
+                    // Behalte nur Fenster, bei denen der letzte Starttag heute oder in der Zukunft liegt
+                    win.latestStart >= today && 
+                    // Stelle sicher, dass der Starttag nicht nach dem letzten Starttag liegt (für kurze Phasen)
+                    win.start <= win.latestStart
+                )
+                .sort((a, b) => a.start - b.start)
+                .slice(0, 2);
+
+            // --- ANGEPASSTE AUSGABE ---
+            const formatDate = (date) => {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                return date.toLocaleDateString('de-DE', options);
+            };
+            
+            let outputHTML = `<h2>Ihre nächsten möglichen Startzeiträume</h2>`;
+            if (upcomingWindows.length > 0) {
+                 outputHTML += `<p>Basierend auf einer durchschnittlichen Zykluslänge von <span class="result-item">${avgCycleLength} Tagen</span> sind Ihre nächsten beiden Möglichkeiten für den Start der Datenerhebung:</p><hr>`;
+                 
+                 upcomingWindows.forEach(window => {
+                     // Wenn der reguläre Starttag in der Vergangenheit liegt, ist der früheste Start "heute"
+                     const displayStartDate = window.start > today ? window.start : today;
+
+                     outputHTML += `<p><b>${window.name}:</b><br>Mögliche Startzeitpunkte von <span class="result-item">${formatDate(displayStartDate)}</span> bis zum <span class="result-item">${formatDate(window.latestStart)}</span>.</p>`;
+                 });
+            } else {
+                outputHTML += `<p>Basierend auf Ihren Angaben konnte kein zukünftiger Startzeitraum gefunden werden.</p>`;
+            }
+
+            outputHTML += `<hr><p class="important-note"><b>Wichtiger Hinweis:</b> Bitte führen Sie zur genauen Bestimmung des Eisprungs an den relevanten Tagen einen LH-Test durch.</p>`;
+            
+            resultsDiv.innerHTML = outputHTML;
+            resultsDiv.style.display = 'block';
+        }
+    </script>
+
+</body>
+</html>
