@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rechner für Studien-Teilnahme</title>
     <style>
-        /* Styling ist identisch zum vorherigen Code */
+        /* Styling is identical to the previous code */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f4f7f9;
@@ -131,7 +131,8 @@
                 <input type="number" id="bleeding-days" placeholder="z.B. 5" required>
             </div>
 
-            <button type="button" onclick="calculateWindow()">Zeitfenster berechnen</button>
+            <!-- CHANGE 1: The onclick attribute has been removed and an ID has been added -->
+            <button type="button" id="calculate-btn">Zeitfenster berechnen</button>
         </form>
 
         <div id="results"></div>
@@ -173,6 +174,7 @@
             const oneDay = 1000 * 60 * 60 * 24;
             let avgCycleLength;
             const cycleLength1 = Math.round((lastPeriodDate.getTime() - secondLastPeriodDate.getTime()) / oneDay);
+            
             if (thirdLastPeriodDate) {
                 const cycleLength2 = Math.round((secondLastPeriodDate.getTime() - thirdLastPeriodDate.getTime()) / oneDay);
                 avgCycleLength = Math.round((cycleLength1 + cycleLength2) / 2);
@@ -210,23 +212,18 @@
                 calculationStartDate = nextPeriodDate;
             }
 
-            // --- NEUE LOGIK ZUM FILTERN UND AUFBEREITEN ---
             const upcomingWindows = allPossibleWindows
                 .map(win => {
-                    // Berechne den letztmöglichen Starttag für jedes Fenster
                     const latestStart = addDays(win.end, -4);
                     return { ...win, latestStart };
                 })
                 .filter(win => 
-                    // Behalte nur Fenster, bei denen der letzte Starttag heute oder in der Zukunft liegt
                     win.latestStart >= today && 
-                    // Stelle sicher, dass der Starttag nicht nach dem letzten Starttag liegt (für kurze Phasen)
                     win.start <= win.latestStart
                 )
                 .sort((a, b) => a.start - b.start)
                 .slice(0, 2);
 
-            // --- ANGEPASSTE AUSGABE ---
             const formatDate = (date) => {
                 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
                 return date.toLocaleDateString('de-DE', options);
@@ -237,9 +234,7 @@
                  outputHTML += `<p>Basierend auf einer durchschnittlichen Zykluslänge von <span class="result-item">${avgCycleLength} Tagen</span> sind Ihre nächsten beiden Möglichkeiten für den Start der Datenerhebung:</p><hr>`;
                  
                  upcomingWindows.forEach(window => {
-                     // Wenn der reguläre Starttag in der Vergangenheit liegt, ist der früheste Start "heute"
                      const displayStartDate = window.start > today ? window.start : today;
-
                      outputHTML += `<p><b>${window.name}:</b><br>Mögliche Startzeitpunkte von <span class="result-item">${formatDate(displayStartDate)}</span> bis zum <span class="result-item">${formatDate(window.latestStart)}</span>.</p>`;
                  });
             } else {
@@ -251,6 +246,15 @@
             resultsDiv.innerHTML = outputHTML;
             resultsDiv.style.display = 'block';
         }
+
+        // CHANGE 2: Added a proper event listener.
+        // This waits for the page to be fully loaded, then attaches the 'click' function to the button.
+        document.addEventListener('DOMContentLoaded', function() {
+            const calculateButton = document.getElementById('calculate-btn');
+            if (calculateButton) {
+                calculateButton.addEventListener('click', calculateWindow);
+            }
+        });
     </script>
 
 </body>
